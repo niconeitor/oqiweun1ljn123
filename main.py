@@ -10,7 +10,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 ))
 
 # salsa
-# samba
+# sambas
 
 
 def add_song_to_queue_if_genre_matches(song_name):
