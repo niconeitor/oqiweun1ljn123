@@ -50,7 +50,7 @@ while True:
           cv2.rectangle(frame, (x, y + h), (x + w, y + h + 30), color, -1)
           cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
           cv2.putText(frame, name, (x, y + h + 25), 2, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
+#Apretar Escape para cerrar ventana
      cv2.imshow("Frame", frame)
      k = cv2.waitKey(1) & 0xFF
      if k == 27:
