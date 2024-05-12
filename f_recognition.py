@@ -1,6 +1,7 @@
 import cv2
 import os
 import face_recognition
+import subprocess
 
 # Codificar los rostros extraidos
 imageFacesPath = "faces"
@@ -26,6 +27,7 @@ total_frame_count = 0
 interval_frame_count = 0
 interval_length = 10  # Número de frames para detectar
 wait_frames = 30  # Número de frames para esperar antes de iniciar el siguiente intervalo
+cancion_reproducida = {nombre: False for nombre in facesNames}
 
 while True:
      ret, frame = cap.read()
@@ -53,6 +55,11 @@ while True:
                else:
                     name = "Desconocido"
                     color = (50, 50, 255)
+               
+               if name != "Desconocido" and not cancion_reproducida[name]:
+                    mp3_file = os.path.join("musica", f"{name}.mp3")
+                    subprocess.Popen(["start", "", mp3_file], shell=True)
+                    cancion_reproducida[name] = True
 
                cv2.rectangle(frame, (x, y + h), (x + w, y + h + 30), color, -1)
                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
