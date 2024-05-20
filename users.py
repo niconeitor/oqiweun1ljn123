@@ -11,21 +11,24 @@ cur = conn.cursor()
 #Stuff
 
 cur.execute("""
-    CREATE TABLE Cliente (
-    id SERIAL PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS Cliente (
+    id_cliente SERIAL PRIMARY KEY,
+    login VARCHAR(64) NOT NULL,
+    pass VARCHAR(32) NOT NULL,
     nombre VARCHAR(255) NOT NULL,
     apellidos VARCHAR(255) NOT NULL,
-    edad INT NOT NULL
+    fecha_nac DATE NOT NULL,
+    cuenta_vigente BIT NOT NULL
 );           
     CREATE TABLE IF NOT EXISTS Cancion(
-    id SERIAL PRIMARY KEY,
+    id_cancion SERIAL PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL
 );
-CREATE TABLE Cliente_Cancion (
+CREATE TABLE IF NOT EXISTS Lista_cancion (
     id_cliente INT,
     id_cancion INT,
-    FOREIGN KEY (id_cliente) REFERENCES Cliente(id),
-    FOREIGN KEY (id_cancion) REFERENCES Cancion(id),
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente),
+    FOREIGN KEY (id_cancion) REFERENCES Cancion(id_cancion),
     PRIMARY KEY (id_cliente, id_cancion)
 );
             """)

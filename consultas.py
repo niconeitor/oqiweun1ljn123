@@ -12,54 +12,38 @@ cur = conn.cursor()
 
 
 # Función para buscar cliente por ID en la base de datos
+id_cliente= 5
 def buscar_cliente_por_id(id_cliente):
-    # Realizar conexión a la base de datos
-    conn = psycopg2.connect(
-        dbname="nombre_base_de_datos",
-        user="usuario",
-        password="contraseña",
-        host="localhost"
-    )
-    cursor = conn.cursor()
-
     # Ejecutar la consulta para obtener los datos del cliente por su ID
-    cursor.execute("""
-        SELECT Cliente.nombre, canciones.nombre 
+    cur.execute("""
+        SELECT Cliente.nombre, Cancion.nombre 
         FROM Cliente 
-        LEFT JOIN Cliente_Cancion ON Cliente.id = Cliente_Cancion.id_cliente 
-        LEFT JOIN canciones ON Cliente_Cancion.id_cancion = canciones.id 
-        WHERE Cliente.id = %s
+        LEFT JOIN Lista_cancion ON Cliente.id_cliente = Lista_cancion.id_cliente 
+        LEFT JOIN Cancion ON Lista_cancion.id_cancion = Cancion.id_cancion 
+        WHERE Cliente.id_cliente = %s
     """, (id_cliente,))
-    cliente = cursor.fetchall()
+    cliente = cur.fetchall()
 
     # Cerrar la conexión y devolver los datos del cliente
-    cursor.close()
+    cur.close()
     conn.close()
     return cliente
-
-# Supongamos que tienes una función para reconocimiento facial que devuelve el ID del cliente
-def reconocimiento_facial(imagen):
-    # Aquí iría tu lógica para reconocimiento facial y devolver el ID del cliente
-    # Por simplicidad, asumiré que devuelve un ID de cliente
-    id_cliente = "123"
-    return id_cliente
-
-# Obtener el ID del cliente mediante reconocimiento facial
-id_cliente = reconocimiento_facial("imagen.jpg")
 
 # Buscar al cliente en la base de datos por su ID
 cliente = buscar_cliente_por_id(id_cliente)
 
 # Si se encontró al cliente
-if cliente:
-    nombre_cliente = cliente[0][0]  # Obtenemos el nombre del primer registro
-    canciones_cliente = [c[1] for c in cliente if c[1] is not None]  # Ignoramos el nombre y obtenemos solo las canciones
-    # Obtener una canción aleatoria del cliente si hay canciones registradas
-    if canciones_cliente:
-        cancion_aleatoria = random.choice(canciones_cliente)
-        print("Cliente:", nombre_cliente)
-        print("Canción Aleatoria:", cancion_aleatoria)
+def cancion_aleatoria(cliente):
+    if cliente:
+        nombre_cliente = cliente[0][0]  # Obtenemos el nombre del primer registro
+        canciones_cliente = [c[1] for c in cliente if c[1] is not None]  # Ignoramos el nombre y obtenemos solo las canciones
+        # Obtener una canción aleatoria del cliente si hay canciones registradas
+        if canciones_cliente:
+            cancion_aleatoria = random.choice(canciones_cliente)
+            print("Cliente:", nombre_cliente)
+            print("Canción Aleatoria:", cancion_aleatoria)
+        else:
+            print("El cliente no tiene canciones registradas.")
     else:
-        print("El cliente no tiene canciones registradas.")
-else:
-    print("Cliente no encontrado en la base de datos.")
+        print("Cliente no encontrado en la base de datos.")
+print(cancion_aleatoria(cliente))
