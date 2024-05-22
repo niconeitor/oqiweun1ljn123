@@ -18,6 +18,7 @@ cur.execute("""
     nombre VARCHAR(255) NOT NULL,
     apellidos VARCHAR(255) NOT NULL,
     fecha_nac DATE NOT NULL,
+    genero VARCHAR(10) NOT NULL,
     cuenta_vigente BIT NOT NULL
 );           
     CREATE TABLE IF NOT EXISTS Cancion(

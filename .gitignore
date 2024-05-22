@@ -1,3 +1,4 @@
 # Directorio del entorno virtual (cambia el nombre si es necesario)
 .venv/
 my_demo/
+credentials.env

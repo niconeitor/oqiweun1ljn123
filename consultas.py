@@ -12,7 +12,7 @@ cur = conn.cursor()
 
 
 # Función para buscar cliente por ID en la base de datos
-id_cliente= 5
+id_cliente= 6
 def buscar_cliente_por_id(id_cliente):
     # Ejecutar la consulta para obtener los datos del cliente por su ID
     cur.execute("""
