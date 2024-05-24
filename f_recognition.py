@@ -5,7 +5,6 @@ import subprocess
 
 # Codificar los rostros extraidos
 imageFacesPath = "faces"
-
 facesEncodings = []
 facesNames = []
 for file_name in os.listdir(imageFacesPath):
@@ -33,14 +32,11 @@ while True:
      ret, frame = cap.read()
      if ret == False:
           break
-
      frame = cv2.flip(frame, 1)
      orig = frame.copy()
      faces = faceClassif.detectMultiScale(frame, 1.1, 5)
-
      total_frame_count += 1
      interval_frame_count += 1
-
      if interval_frame_count <= interval_length:  # Procesar solo durante el intervalo de detección
           for (x, y, w, h) in faces:
                face = orig[y:y + h, x:x + w]
@@ -54,13 +50,11 @@ while True:
                     color = (125, 220, 0)
                else:
                     name = "Desconocido"
-                    color = (50, 50, 255)
-               
+                    color = (50, 50, 255)               
                if name != "Desconocido" and not cancion_reproducida[name]:
                     mp3_file = os.path.join("musica", f"{name}.mp3")
                     subprocess.Popen(["start", "", mp3_file], shell=True)
                     cancion_reproducida[name] = True
-
                cv2.rectangle(frame, (x, y + h), (x + w, y + h + 30), color, -1)
                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
                cv2.putText(frame, name, (x, y + h + 25), 2, 1, (255, 255, 255), 2, cv2.LINE_AA)
@@ -68,12 +62,10 @@ while True:
           interval_frame_count = 0  # Reiniciar el contador de frames del intervalo
           if total_frame_count % wait_frames == 0:  # Esperar antes de iniciar el siguiente intervalo
                interval_frame_count = 1  # Comenzar un nuevo intervalo
-
      # Apretar Escape para cerrar ventana
      cv2.imshow("Frame", frame)
      k = cv2.waitKey(1) & 0xFF
      if k == 27:
           break
-
 cap.release()
 cv2.destroyAllWindows()
