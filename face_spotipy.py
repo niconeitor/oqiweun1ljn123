@@ -8,23 +8,6 @@ from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyOAuth
 
 
-load_dotenv()
-# Access environment variables
-client_id = os.getenv('SPOTIPY_CLIENT_ID')
-client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
-redirect_uri = os.getenv('SPOTIPY_REDIRECT_URI')
-
-# Configuración de Spotipy (debes obtener tus credenciales de desarrollador de Spotify)
-
-scope = "playlist-read-private user-modify-playback-state playlist-red-collaborative"  # Adjust scopes as needed
-
-sp_oauth = SpotifyOAuth(client_id=client_id,
-                        client_secret=client_secret,
-                        redirect_uri=redirect_uri,
-                        scope=scope)
-
-
-
 try:
     conn = psycopg2.connect(host="localhost",dbname="salsia", user="postgres", password="nicolas_asdf1", port="5432")
     print("Conexión exitosa")
@@ -41,7 +24,7 @@ def reconocimiento_facial(imageFacesPath):
     for file_name in os.listdir(imageFacesPath):
         image = cv2.imread(imageFacesPath + "/" + file_name)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
+        image = cv2.resize(image,(150,150))
         f_coding = face_recognition.face_encodings(image, known_face_locations=[(0, 150, 150, 0)])[0]
         facesEncodings.append(f_coding)
         facesNames.append(file_name.split(".")[0])
@@ -49,7 +32,7 @@ def reconocimiento_facial(imageFacesPath):
     ##############################################
     # LEYENDO VIDEO
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-
+    
     # Detector facial
     faceClassif = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
@@ -66,6 +49,8 @@ def reconocimiento_facial(imageFacesPath):
 
         frame = cv2.flip(frame, 1)
         orig = frame.copy()
+        
+        
         faces = faceClassif.detectMultiScale(frame, 1.1, 5)
 
         total_frame_count += 1
@@ -104,9 +89,7 @@ def reconocimiento_facial(imageFacesPath):
     cap.release()
     cv2.destroyAllWindows()
 
-reconocimiento_facial(imageFacesPath)
-for recognized_user in reconocimiento_facial(imageFacesPath):
-    print(f"Recognized user: {recognized_user}")  # Continuously print recognized user IDs
+
 
 # Función para buscar cliente y sus canciones por ID
 cur = conn.cursor()
@@ -121,15 +104,14 @@ def buscar_cliente_por_id(id_cliente):
     """, (id_cliente,))
     cliente = cur.fetchall()
     # Cerrar la conexión y devolver los datos del cliente
-    cur.close()
-    conn.close()
+
     return cliente
 
 # Si se encontró al cliente
 def cancion_aleatoria(cliente):
     if cliente:
         nombre_cliente = cliente[0][0]  # Obtenemos el nombre del primer registro
-        canciones_cliente = [c[1] for c in cliente if c[1] is not None]  # Ignoramos el nombre y obtenemos solo las canciones
+        canciones_cliente = [c[3] for c in cliente if c[3] is not None]  # Ignoramos el nombre y obtenemos solo las canciones
         # Obtener una canción aleatoria del cliente si hay canciones registradas
         if canciones_cliente:
             cancion_aleatoria = random.choice(canciones_cliente)
@@ -140,34 +122,9 @@ def cancion_aleatoria(cliente):
     else:
         print("Cliente no encontrado en la base de datos.")
 # Cerrar la conexión a la base de datos al final del programa
-conn.close()
 
-# Función para reproducir canción aleatoria en Spotify
-# def reproducir_cancion_aleatoria(uri_cancion):
-#     for encoding_conocido, id_cliente in rostros_conocidos.items():
-#         resultados = face_recognition.compare_faces(
-#             encodings_cara, encoding_conocido)
-#         if True in resultados:
-#             return id_cliente  # Devolvemos el ID del cliente si hay coincidencia
-
-#     return None  # Si no se reconoce la cara
-
-
-
-
-
-'''
-Consideraciones importantes:
-
-Credenciales de Spotify: Asegúrate de tener tus credenciales de desarrollador 
-de Spotify y configurar correctamente la variable sp.
-
-Base de datos de rostros: Debes crear tu propia base de datos 
-de rostros conocidos (en el ejemplo, rostros_conocidos) con los encodings 
-faciales de tus clientes y sus respectivos IDs.
-
-Dispositivo de reproducción: Necesitarás configurar un dispositivo de reproducción 
-en Spotify para que la función reproducir_cancion_aleatoria 
-pueda enviar la canción a ese dispositivo.
-
-'''
+reconocimiento_facial(imageFacesPath)
+for recognized_user in reconocimiento_facial(imageFacesPath):
+    cliente = buscar_cliente_por_id(recognized_user)
+    cancion_aleatoria(cliente)
+    

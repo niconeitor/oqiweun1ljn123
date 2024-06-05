@@ -301,6 +301,47 @@ def cancion_aleatoria(cliente):
 # Cerrar la conexión a la base de datos al final del programa
 
 #################################################################################################################
+# if __name__ == '__main__':
+#     auth_manager, spotify = create_spotify()  # Initialize as None
+#     # Check if authentication objects are already created
+#     playlist_started = False
+#     played_songs = set()
+#     try:
+#         while True:
+#             auth_manager, spotify = refresh_spotify(auth_manager, spotify)
+            
+#             if not is_spotify_running():
+#                 print("Spotify no está abierto. Abierto Spotify y reproduciendo la primera lista de musica...")
+#                 open_spotify_if_not_running()
+#                 time.sleep(5)
+#                 playlist_started = False  # Esta bandera se resetea, ya que si spotify no estaba abierto, no habia música reproduciéndose
+
+#             if not playlist_started:
+#                 current_playback = spotify.current_playback()
+#                 if current_playback is None or not current_playback['is_playing']:
+#                     check_and_play_first_playlist(spotify)
+#                     time.sleep(2)
+
+#             current_playback = spotify.current_playback()
+#             if current_playback and current_playback['is_playing']:
+#                 cancion=input("Ingrese cancion:")
+#                 cancion_corregida=get_first_song_name(spotify, cancion)
+#                 if cancion_corregida not in played_songs:
+#                     added_song_name = add_song_to_queue_if_genre_matches(spotify,cancion_corregida)
+#             # Check if song is added and not yet tracked
+#                 if added_song_name is not None and added_song_name not in played_songs:
+#                     played_songs.add(added_song_name)  # Track added song name
+#                 else:
+#                     print("Canción ya agregada, ignorando...")
+#             time.sleep(5)  # Tiempo entre loop, será borrado mas adelante
+#     except KeyboardInterrupt:
+#         pass
+# with open('played_songs.txt', 'w') as file:
+#     for song_id in played_songs:
+
+#         file.write(f"{song_id}\n")
+        
+        
 if __name__ == '__main__':
     auth_manager, spotify = create_spotify()  # Initialize as None
     # Check if authentication objects are already created
@@ -323,21 +364,22 @@ if __name__ == '__main__':
 
             current_playback = spotify.current_playback()
             if current_playback and current_playback['is_playing']:
-                cancion=input("Ingrese cancion:")
-                cancion_corregida=get_first_song_name(spotify, cancion)
+                cancion = input("Ingrese cancion:")
+                cancion_corregida = get_first_song_name(spotify, cancion)
                 if cancion_corregida not in played_songs:
-                    added_song_name = add_song_to_queue_if_genre_matches(spotify,cancion_corregida)
-            # Check if song is added and not yet tracked
-                if added_song_name is not None and added_song_name not in played_songs:
-                    played_songs.add(added_song_name)  # Track added song name
+                    added_song_name = add_song_to_queue_if_genre_matches(spotify, cancion_corregida)
+                    # Check if song is added and not yet tracked
+                    if added_song_name is not None:
+                        if added_song_name not in played_songs:
+                            played_songs.add(added_song_name)  # Track added song name
+                        else:
+                            print("Canción ya agregada, ignorando...")
                 else:
                     print("Canción ya agregada, ignorando...")
             time.sleep(5)  # Tiempo entre loop, será borrado mas adelante
     except KeyboardInterrupt:
         pass
-with open('played_songs.txt', 'w') as file:
-    for song_id in played_songs:
 
-        file.write(f"{song_id}\n")
-        
-        
+    with open('played_songs.txt', 'w') as file:
+        for song_id in played_songs:
+            file.write(f"{song_id}\n")
