@@ -9,7 +9,7 @@ import cv2
 import random
 import psutil
 import subprocess
-import openpyxl
+
 
 ##################### SECCIÓN DE SPOTIFY ###########################
 try:
@@ -298,7 +298,7 @@ def cancion_aleatoria(cliente):
             print("El cliente no tiene canciones registradas.")
     else:
         print("Cliente no encontrado en la base de datos.")
-# Cerrar la conexión a la base de datos al final del programa
+
 
 #################################################################################################################
 # if __name__ == '__main__':
@@ -361,6 +361,7 @@ if __name__ == '__main__':
                 current_playback = spotify.current_playback()
                 if current_playback is None or not current_playback['is_playing']:
                     check_and_play_first_playlist(spotify)
+                    time.sleep(2)
 
             current_playback = spotify.current_playback()
             if current_playback and current_playback['is_playing']:
