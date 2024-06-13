@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS Lista_cancion (
     FOREIGN KEY (id_cancion) REFERENCES Cancion(id_cancion),
     PRIMARY KEY (id_cliente, id_cancion)
 );
+
+CREATE TABLE IF NOT EXISTS resenya(
+    id SERIAL PRIMARY KEY,
+    puntuacion DECIMAL(2,1),
+    resenya TEXT NOT NULL,
+    id_cliente INT UNIQUE,
+    FOREIGN KEY(id_cliente) REFERENCES Cliente(id_cliente)
+    
+)
             """)
 
 

@@ -5,6 +5,7 @@ import cv2
 import face_recognition
 import os
 import time
+import random
 import spotipy
 from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyOAuth
@@ -12,6 +13,7 @@ import psutil
 import subprocess
 import pandas as pd
 from datetime import datetime
+import psycopg2
 
 class FaceRecognitionApp:
     def __init__(self, root, imageFacesPath):
@@ -29,6 +31,13 @@ class FaceRecognitionApp:
         self.played_songs = []
         self.recognized_client_name = None
         self.lock = threading.Lock()
+        self.client_attempts = {}
+
+        self.conn = self.connect_to_db()
+        if self.conn:
+            self.cur = self.conn.cursor()
+        else:
+            self.cur = None
 
         self.start_button = tk.Button(root, text="Start Recognition", command=self.start_recognition)
         self.start_button.pack(pady=10)
@@ -55,6 +64,21 @@ class FaceRecognitionApp:
 
         self.notification_label = tk.Label(root, text="", fg="red")
         self.notification_label.pack(pady=10)
+
+    def connect_to_db(self):
+        try:
+            conn = psycopg2.connect(
+                host="localhost",
+                dbname="salsia",
+                user="postgres",
+                password="nicolas_asdf1",
+                port="5432"
+            )
+            print("Conexión exitosa")
+            return conn
+        except Exception as ex:
+            print(f"Error de conexión a la base de datos: {ex}")
+            return None
 
     def start_recognition(self):
         self.start_button.config(state=tk.DISABLED)
@@ -91,21 +115,68 @@ class FaceRecognitionApp:
         # No llamamos a self.stop_spotify() aquí
         if self.spotify_thread and self.spotify_thread.is_alive():
             self.spotify_thread.join()
+        if self.cur:
+            self.cur.close()
+        if self.conn:
+            self.conn.close()
         self.root.quit()
 
-    def update_recognized_client_name(self, name):
+    def update_recognized_client_name(self, client_id):
+        cliente = self.buscar_cliente_por_id(client_id)
+        if cliente:
+            nombre_completo = f"{cliente[0][0]} {cliente[0][1]}"
+            self.recognized_label.config(text=f"Recognized Client: {nombre_completo}")
+            if self.spotify:
+                if client_id not in self.client_attempts:
+                    self.client_attempts[client_id] = 0
+                self.try_add_client_song(cliente, client_id)
+        else:
+            self.recognized_label.config(text="Recognized Client: Desconocido")
+        
         with self.lock:
-            self.recognized_client_name = name
-        self.recognized_label.config(text=f"Recognized Client: {name}")
+            self.recognized_client_name = nombre_completo
 
-    def add_song_to_queue(self):
-        song_name = self.song_entry.get()
+    def buscar_cliente_por_id(self, id_cliente):
+        if self.cur:
+            try:
+                # Ejecutar la consulta para obtener los datos del cliente por su ID
+                self.cur.execute("""
+                    SELECT Cliente.nombre, Cliente.apellidos, Cliente.genero, Cancion.nombre 
+                    FROM Cliente 
+                    LEFT JOIN Lista_cancion ON Cliente.id_cliente = Lista_cancion.id_cliente 
+                    LEFT JOIN Cancion ON Lista_cancion.id_cancion = Cancion.id_cancion 
+                    WHERE Cliente.id_cliente = %s
+                """, (id_cliente,))
+                cliente = self.cur.fetchall()
+                return cliente
+            except Exception as ex:
+                print(f"Error ejecutando la consulta: {ex}")
+                return None
+        else:
+            print("Cursor no disponible")
+            return None
+
+    def try_add_client_song(self, cliente, client_id):
+        canciones_cliente = [c[3] for c in cliente if c[3] is not None]  # Obtenemos solo las canciones
+        if canciones_cliente and self.client_attempts[client_id] < 3:
+            cancion_aleatoria = random.choice(canciones_cliente)
+            self.client_attempts[client_id] += 1
+            self.add_song_to_queue(cancion_aleatoria, client_id)
+        else:
+            print("El cliente no tiene canciones registradas o se han agotado los intentos.")
+
+    def add_song_to_queue(self, song_name=None, client_id=None):
+        if song_name is None:
+            song_name = self.song_entry.get()
+        
         if self.spotify and song_name:
             song_data = self.get_first_song_name(song_name)
             if song_data:
                 song_name, artist_name = song_data
                 if song_name not in [song[0] for song in self.played_songs]:
-                    self.add_song_to_queue_if_genre_matches(song_name, artist_name)
+                    result = self.add_song_to_queue_if_genre_matches(song_name, artist_name)
+                    if result and client_id:
+                        self.client_attempts[client_id] = 3  # Marcar como exitoso
                 else:
                     self.notification_label.config(text=f"Canción '{song_name}' ya está en la lista.")
             else:
@@ -146,10 +217,10 @@ class FaceRecognitionApp:
 
                 if True in result:
                     index = result.index(True)
-                    client_name = facesNames[index]
-                    self.update_recognized_client_name(client_name)
+                    client_id = facesNames[index]
+                    self.update_recognized_client_name(client_id)
                     color = (125, 220, 0)
-                    print(f"Recognized user: {client_name}")
+                    print(f"Recognized user: {client_id}")
                 else:
                     color = (50, 50, 255)
 
@@ -292,7 +363,7 @@ class FaceRecognitionApp:
         except Exception as e:
             print(f"Error obteniendo información del artista: {e}")
             return None
-        genres_to_match = ['salsa', 'samba', 'tango', 'cumbia chilena', 'latin alternative', 'salsa puertorriquena', 'tropical']
+        genres_to_match = ['salsa', 'samba', 'tango', 'cumbia chilena', 'latin alternative', 'salsa puertorriquena', 'tropical', 'latin pop']
         if any(genre in artist['genres'] for genre in genres_to_match):
             print(f"Agregando {track['name']} por {track['artists'][0]['name']} a la lista")
             try:
