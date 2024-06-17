@@ -1,8 +1,10 @@
 import tkinter as tk
+from PIL import Image, ImageTk
 import threading
+import time
+import os
 import cv2
 import face_recognition
-import os
 import random
 import spotipy
 from dotenv import load_dotenv
@@ -12,10 +14,68 @@ import subprocess
 import pandas as pd
 from datetime import datetime
 import psycopg2
-import time
+
+class WelcomeDisplay:
+    def __init__(self, root, logo_path, background_color):
+        self.root = root
+        self.logo_path = logo_path
+        self.background_color = background_color
+        self.client_welcomed = set()
+        self.message_queue = []
+        self.current_message = None
+
+        self.root.attributes("-fullscreen", True)
+        self.root.configure(bg=self.background_color)
+
+        self.canvas = tk.Canvas(self.root, bg=self.background_color, highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        self.logo_img = Image.open(self.logo_path)
+        self.logo_photo = ImageTk.PhotoImage(self.logo_img)
+
+        self.logo_item = self.canvas.create_image(100, 100, anchor=tk.NW, image=self.logo_photo)
+        self.root.bind("<Escape>", self.exit_fullscreen)
+
+    def exit_fullscreen(self, event=None):
+        self.root.attributes("-fullscreen", False)
+        self.root.destroy()
+
+    def show_welcome_message(self, name, last_name, gender):
+        if name not in self.client_welcomed:
+            self.client_welcomed.add(name)
+            message = self.generate_message(name, last_name, gender)
+            self.message_queue.append(message)
+            if not self.current_message:
+                self.display_next_message()
+
+    def generate_message(self, name, last_name, gender):
+        if gender == 'masculino':
+            return f"Bienvenido a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+        elif gender == 'femenino':
+            return f"Bienvenida a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+        else:
+            return f"Bienvenide a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+
+    def display_next_message(self):
+        if self.message_queue:
+            self.current_message = self.message_queue.pop(0)
+            self.canvas.itemconfig(self.logo_item, image=self.logo_photo)
+            self.canvas.coords(self.logo_item, 10, 10)
+            self.display_message_on_screen(self.current_message)
+            self.root.after(10000, self.clear_message)
+
+    def display_message_on_screen(self, message):
+        self.message_item = self.canvas.create_text(self.root.winfo_width()//2, self.root.winfo_height()//2,
+                                                    text=message, font=("Helvetica", 24), fill="white",
+                                                    anchor=tk.CENTER)
+
+    def clear_message(self):
+        self.canvas.delete(self.message_item)
+        self.current_message = None
+        self.display_next_message()
 
 class FaceRecognitionApp:
-    def __init__(self, root, imageFacesPath):
+    def __init__(self, root, imageFacesPath, welcome_display):
         self.root = root
         self.root.title("Face Recognition App")
         self.root.geometry("800x600")
@@ -32,6 +92,7 @@ class FaceRecognitionApp:
         self.recognized_clients = {}  # Diccionario para almacenar clientes reconocidos
         self.lock = threading.Lock()
         self.client_attempts = {}
+        self.welcome_display = welcome_display
 
         self.conn = self.connect_to_db()
         if self.conn:
@@ -144,6 +205,8 @@ class FaceRecognitionApp:
                 if client_id not in self.client_attempts:
                     self.client_attempts[client_id] = 0
                 self.try_add_client_song(cliente, client_id)
+            # Llamar al método show_welcome_message del módulo WelcomeDisplay
+            self.welcome_display.show_welcome_message(cliente[0][0], cliente[0][1], cliente[0][2])
         else:
             self.recognized_label.config(text="Recognized Client: Desconocido")
 
@@ -380,7 +443,13 @@ class FaceRecognitionApp:
             self.notification_label.config(text=f"{track['name']} no coincide con ningún género.")
             return None
 
-if __name__ == "__main__":
+def start_welcome_display():
     root = tk.Tk()
-    app = FaceRecognitionApp(root, "faces")
+    logo_path = "3D-NIVEL-80-LIVE.gif"
+    background_color = "#3F007F"  # Color del segundo archivo de imagen proporcionado
+    welcome_display = WelcomeDisplay(root, logo_path, background_color)
+    app = FaceRecognitionApp(root, "faces", welcome_display)
     root.mainloop()
+
+if __name__ == "__main__":
+    start_welcome_display()
