@@ -14,6 +14,7 @@ import subprocess
 import pandas as pd
 from datetime import datetime
 import psycopg2
+from concurrent.futures import ThreadPoolExecutor
 
 class WelcomeDisplay:
     def __init__(self, root, logo_path, background_color):
@@ -24,7 +25,7 @@ class WelcomeDisplay:
         self.message_queue = []
         self.current_message = None
 
-        self.root.geometry("1024x768")
+        self.root.geometry("800x600")
         self.root.configure(bg=self.background_color)
 
         self.canvas = tk.Canvas(self.root, bg=self.background_color, highlightthickness=0)
@@ -38,12 +39,17 @@ class WelcomeDisplay:
         self.root.bind("<Alt-Return>", self.toggle_fullscreen)
         self.root.bind("<Configure>", self.on_resize)
 
-        self.animate_logo(0)
+        self.animating = True
+        self.animation_thread = threading.Thread(target=self.animate_logo)
+        self.animation_thread.start()
 
-    def animate_logo(self, frame_index):
-        frame = self.logo_frames[frame_index]
-        self.canvas.itemconfig(self.logo_item, image=frame)
-        self.root.after(100, self.animate_logo, (frame_index + 1) % len(self.logo_frames))
+    def animate_logo(self):
+        frame_index = 0
+        while self.animating:
+            frame = self.logo_frames[frame_index]
+            self.canvas.itemconfig(self.logo_item, image=frame)
+            frame_index = (frame_index + 1) % len(self.logo_frames)
+            time.sleep(0.1)
 
     def on_resize(self, event):
         self.canvas.coords(self.logo_item, event.width // 2, event.height // 2)
@@ -144,6 +150,8 @@ class FaceRecognitionApp:
 
         self.notification_label = tk.Label(root, text="", fg="red")
         self.notification_label.pack(pady=10)
+
+        self.executor = ThreadPoolExecutor(max_workers=8)  # Cambia el número de núcleos según tu preferencia
 
     def connect_to_db(self):
         try:
@@ -306,28 +314,14 @@ class FaceRecognitionApp:
             orig = frame.copy()
             faces = faceClassif.detectMultiScale(frame, 1.1, 5)
 
+            tasks = []
             for (x, y, w, h) in faces:
                 face = orig[y:y + h, x:x + w]
                 face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+                tasks.append(self.executor.submit(self.process_face, face, facesEncodings, facesNames, frame, x, y, w, h))
 
-                try:
-                    with self.lock:
-                        actual_face_encoding = face_recognition.face_encodings(face, known_face_locations=[(0, w, h, 0)])[0]
-                        result = face_recognition.compare_faces(facesEncodings, actual_face_encoding)
-                except IndexError:
-                    continue
-
-                if True in result:
-                    index = result.index(True)
-                    client_id = facesNames[index]
-                    self.update_recognized_client_name(client_id)
-                    color = (125, 220, 0)
-                    print(f"Recognized user: {client_id}")
-                else:
-                    color = (50, 50, 255)
-
-                cv2.rectangle(frame, (x, y + h), (x + w, y + h), color, -1)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+            for task in tasks:
+                task.result()  # Asegurarse de que todas las tareas se completen
 
             cv2.imshow("Frame", frame)
             if cv2.waitKey(1) & 0xFF == 27:
@@ -335,6 +329,26 @@ class FaceRecognitionApp:
                 break
 
         self.release_resources()
+
+    def process_face(self, face, facesEncodings, facesNames, frame, x, y, w, h):
+        try:
+            with self.lock:
+                actual_face_encoding = face_recognition.face_encodings(face, known_face_locations=[(0, w, h, 0)])[0]
+                result = face_recognition.compare_faces(facesEncodings, actual_face_encoding)
+        except IndexError:
+            return
+
+        if True in result:
+            index = result.index(True)
+            client_id = facesNames[index]
+            self.update_recognized_client_name(client_id)
+            color = (125, 220, 0)
+            print(f"Recognized user: {client_id}")
+        else:
+            color = (50, 50, 255)
+
+        cv2.rectangle(frame, (x, y + h), (x + w, y + h), color, -1)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
     def release_resources(self):
         try:

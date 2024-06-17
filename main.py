@@ -1,8 +1,10 @@
 import tkinter as tk
+from PIL import Image, ImageTk, ImageSequence
 import threading
+import time
+import os
 import cv2
 import face_recognition
-import os
 import random
 import spotipy
 from dotenv import load_dotenv
@@ -12,13 +14,121 @@ import subprocess
 import pandas as pd
 from datetime import datetime
 import psycopg2
-import time
+
+class WelcomeDisplay:
+    def __init__(self, root, logo_path, background_color):
+        self.root = root
+        self.logo_path = logo_path
+        self.background_color = background_color
+        self.client_welcomed = set()
+        self.message_queue = []
+        self.current_message = None
+        self.stop_event = threading.Event()
+
+        self.root.geometry("800x600")
+        self.root.configure(bg=self.background_color)
+
+        self.canvas = tk.Canvas(self.root, bg=self.background_color, highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        self.logo_img = Image.open(self.logo_path)
+        self.logo_frames = [ImageTk.PhotoImage(frame.convert("RGBA")) for frame in ImageSequence.Iterator(self.logo_img)]
+        self.logo_item = self.canvas.create_image(self.root.winfo_width() // 2, self.root.winfo_height() // 2, anchor=tk.CENTER, image=self.logo_frames[0])
+
+        self.root.bind("<Escape>", self.exit_fullscreen)
+        self.root.bind("<Alt-Return>", self.toggle_fullscreen)
+        self.root.bind("<Configure>", self.on_resize)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        self.animating = True
+        self.animation_thread = threading.Thread(target=self.animate_logo)
+        self.animation_thread.start()
+
+    def animate_logo(self):
+        frame_index = 0
+        while not self.stop_event.is_set():
+            if not self.canvas.winfo_exists():
+                return
+            frame = self.logo_frames[frame_index]
+            self.canvas.itemconfig(self.logo_item, image=frame)
+            frame_index = (frame_index + 1) % len(self.logo_frames)
+            time.sleep(0.1)
+
+    def on_resize(self, event):
+        if not self.canvas.winfo_exists():
+            return
+        self.canvas.coords(self.logo_item, event.width // 2, event.height // 2)
+
+    def toggle_fullscreen(self, event=None):
+        if not self.root.winfo_exists():
+            return
+        is_fullscreen = self.root.attributes("-fullscreen")
+        self.root.attributes("-fullscreen", not is_fullscreen)
+
+    def exit_fullscreen(self, event=None):
+        if not self.root.winfo_exists():
+            return
+        self.root.attributes("-fullscreen", False)
+        self.root.destroy()
+
+    def on_close(self):
+        self.stop_event.set()
+        self.animation_thread.join()
+        self.root.destroy()
+
+    def show_welcome_message(self, name, last_name, gender):
+        if name not in self.client_welcomed:
+            self.client_welcomed.add(name)
+            message = self.generate_message(name, last_name, gender)
+            self.message_queue.append(message)
+            if not self.current_message:
+                self.display_next_message()
+
+    def generate_message(self, name, last_name, gender):
+        if gender == 'masculino':
+            return f"Bienvenido a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+        elif gender == 'femenino':
+            return f"Bienvenida a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+        else:
+            return f"Bienvenide a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+
+    def display_next_message(self):
+        if self.message_queue:
+            self.current_message = self.message_queue.pop(0)
+            self.hide_logo()
+            self.display_message_on_screen(self.current_message)
+            self.root.after(10000, self.clear_message)
+
+    def display_message_on_screen(self, message):
+        if not self.canvas.winfo_exists():
+            return
+        self.message_item = self.canvas.create_text(self.root.winfo_width() // 2, self.root.winfo_height() // 2,
+                                                    text=message, font=("Helvetica", 24, "bold"), fill="white",
+                                                    anchor=tk.CENTER)
+
+    def hide_logo(self):
+        if not self.canvas.winfo_exists():
+            return
+        self.canvas.itemconfig(self.logo_item, state='hidden')
+
+    def show_logo(self):
+        if not self.canvas.winfo_exists():
+            return
+        self.canvas.itemconfig(self.logo_item, state='normal')
+
+    def clear_message(self):
+        if not self.canvas.winfo_exists():
+            return
+        self.canvas.delete(self.message_item)
+        self.current_message = None
+        self.show_logo()
+        self.display_next_message()
 
 class FaceRecognitionApp:
     def __init__(self, root, imageFacesPath):
         self.root = root
         self.root.title("Face Recognition App")
-        self.root.geometry("800x600")
+        self.root.geometry("1024x768")
         self.imageFacesPath = imageFacesPath
         self.cap = None
         self.stop_event = threading.Event()
@@ -30,8 +140,6 @@ class FaceRecognitionApp:
         self.playlist_started = False
         self.played_songs = []
         self.recognized_clients = {}  # Diccionario para almacenar clientes reconocidos
-        self.lock = threading.Lock()
-        self.client_attempts = {}
 
         self.conn = self.connect_to_db()
         if self.conn:
@@ -50,6 +158,9 @@ class FaceRecognitionApp:
 
         self.spotify_stop_button = tk.Button(root, text="Stop Spotify", command=self.stop_spotify, state=tk.DISABLED)
         self.spotify_stop_button.pack(pady=10)
+
+        self.welcome_button = tk.Button(root, text="Mensajes de bienvenida", command=self.start_welcome_display)
+        self.welcome_button.pack(pady=10)
 
         self.exit_button = tk.Button(root, text="Exit", command=self.exit_app)
         self.exit_button.pack(pady=10)
@@ -123,6 +234,13 @@ class FaceRecognitionApp:
         self.spotify_start_button.config(state=tk.NORMAL)
         self.spotify_stop_button.config(state=tk.DISABLED)
 
+    def start_welcome_display(self):
+        welcome_root = tk.Toplevel(self.root)
+        logo_path = "3D-NIVEL-80-LIVE.gif"
+        background_color = "#3F007F"
+        welcome_display = WelcomeDisplay(welcome_root, logo_path, background_color)
+        self.welcome_display = welcome_display
+
     def exit_app(self):
         self.stop_recognition()
         self.stop_spotify()
@@ -141,9 +259,10 @@ class FaceRecognitionApp:
             if client_id not in self.recognized_clients:
                 self.recognized_clients[client_id] = (cliente[0][0], cliente[0][1], current_time)
             if self.spotify and self.playlist_started:
-                if client_id not in self.client_attempts:
-                    self.client_attempts[client_id] = 0
                 self.try_add_client_song(cliente, client_id)
+            # Llamar al método show_welcome_message del módulo WelcomeDisplay si está abierto
+            if hasattr(self, 'welcome_display'):
+                self.root.after(0, self.welcome_display.show_welcome_message, cliente[0][0], cliente[0][1], cliente[0][2])
         else:
             self.recognized_label.config(text="Recognized Client: Desconocido")
 
@@ -168,12 +287,11 @@ class FaceRecognitionApp:
 
     def try_add_client_song(self, cliente, client_id):
         canciones_cliente = [c[3] for c in cliente if c[3] is not None]
-        if canciones_cliente and self.client_attempts[client_id] < 3:
+        if canciones_cliente:
             cancion_aleatoria = random.choice(canciones_cliente)
-            self.client_attempts[client_id] += 1
             self.add_song_to_queue(cancion_aleatoria, client_id)
         else:
-            print("El cliente no tiene canciones registradas o se han agotado los intentos.")
+            print("El cliente no tiene canciones registradas.")
 
     def add_song_to_queue(self, song_name=None, client_id=None):
         if self.spotify and self.playlist_started and song_name:
@@ -214,18 +332,16 @@ class FaceRecognitionApp:
             for (x, y, w, h) in faces:
                 face = orig[y:y + h, x:x + w]
                 face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-
                 try:
-                    with self.lock:
-                        actual_face_encoding = face_recognition.face_encodings(face, known_face_locations=[(0, w, h, 0)])[0]
-                        result = face_recognition.compare_faces(facesEncodings, actual_face_encoding)
+                    actual_face_encoding = face_recognition.face_encodings(face, known_face_locations=[(0, w, h, 0)])[0]
+                    result = face_recognition.compare_faces(facesEncodings, actual_face_encoding)
                 except IndexError:
                     continue
 
                 if True in result:
                     index = result.index(True)
                     client_id = facesNames[index]
-                    self.update_recognized_client_name(client_id)
+                    self.root.after(0, self.update_recognized_client_name, client_id)
                     color = (125, 220, 0)
                     print(f"Recognized user: {client_id}")
                 else:
@@ -238,6 +354,8 @@ class FaceRecognitionApp:
             if cv2.waitKey(1) & 0xFF == 27:
                 self.stop_event.set()
                 break
+
+            time.sleep(0.1)  # Optimización para reducir carga de CPU
 
         self.release_resources()
 
