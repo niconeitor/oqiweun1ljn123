@@ -25,7 +25,7 @@ class WelcomeDisplay:
         self.current_message = None
         self.stop_event = threading.Event()
 
-        self.root.geometry("800x600")
+        self.root.geometry("1024x768")
         self.root.configure(bg=self.background_color)
 
         self.canvas = tk.Canvas(self.root, bg=self.background_color, highlightthickness=0)
@@ -128,7 +128,7 @@ class FaceRecognitionApp:
     def __init__(self, root, imageFacesPath):
         self.root = root
         self.root.title("Face Recognition App")
-        self.root.geometry("1024x768")
+        self.root.geometry("800x600")
         self.imageFacesPath = imageFacesPath
         self.cap = None
         self.stop_event = threading.Event()
@@ -140,6 +140,7 @@ class FaceRecognitionApp:
         self.playlist_started = False
         self.played_songs = []
         self.recognized_clients = {}  # Diccionario para almacenar clientes reconocidos
+        self.client_attempts = {}  # Inicializamos el diccionario client_attempts
 
         self.conn = self.connect_to_db()
         if self.conn:
@@ -149,6 +150,9 @@ class FaceRecognitionApp:
 
         self.start_button = tk.Button(root, text="Start Recognition", command=self.start_recognition)
         self.start_button.pack(pady=10)
+
+        self.stop_button = tk.Button(root, text="Stop Recognition", command=self.stop_recognition)
+        self.stop_button.pack(pady=10)
 
         self.print_button = tk.Button(root, text="Generar listas", command=self.generar_listas, state=tk.DISABLED)
         self.print_button.pack(pady=10)
@@ -187,7 +191,9 @@ class FaceRecognitionApp:
             return None
 
     def start_recognition(self):
-        self.start_button.config(state=tk.DISABLED)
+        if self.recognition_thread and self.recognition_thread.is_alive():
+            self.notification_label.config(text="El módulo de reconocimiento facial ya está en ejecución.")
+            return
         self.print_button.config(state=tk.NORMAL)
         self.stop_event.clear()
         self.recognition_thread = threading.Thread(target=self.reconocimiento_facial)
@@ -198,7 +204,6 @@ class FaceRecognitionApp:
         if self.recognition_thread and self.recognition_thread.is_alive():
             self.recognition_thread.join()
         self.release_resources()
-        self.start_button.config(state=tk.NORMAL)
         self.print_button.config(state=tk.DISABLED)
 
     def generar_listas(self):
@@ -286,12 +291,20 @@ class FaceRecognitionApp:
             return None
 
     def try_add_client_song(self, cliente, client_id):
+        if client_id not in self.client_attempts:
+            self.client_attempts[client_id] = 3
+        
         canciones_cliente = [c[3] for c in cliente if c[3] is not None]
-        if canciones_cliente:
+        if canciones_cliente and self.client_attempts[client_id] > 0:
             cancion_aleatoria = random.choice(canciones_cliente)
-            self.add_song_to_queue(cancion_aleatoria, client_id)
-        else:
-            print("El cliente no tiene canciones registradas.")
+            if self.add_song_to_queue(cancion_aleatoria, client_id):
+                self.client_attempts[client_id] = 0  # Reseteamos los intentos si se agrega una canción
+            else:
+                self.client_attempts[client_id] -= 1  # Restamos un intento si la canción no coincide
+                self.try_add_client_song(cliente, client_id)  # Intentamos nuevamente con otra canción
+        elif self.client_attempts[client_id] == 0:
+            print(f"Cliente {client_id} ha agotado sus intentos para agregar una canción.")
+
 
     def add_song_to_queue(self, song_name=None, client_id=None):
         if self.spotify and self.playlist_started and song_name:
@@ -300,12 +313,20 @@ class FaceRecognitionApp:
                 song_name, artist_name = song_data
                 if song_name not in [song[0] for song in self.played_songs]:
                     result = self.add_song_to_queue_if_genre_matches(song_name, artist_name)
-                    if result and client_id:
-                        self.client_attempts[client_id] = 3
+                    if result:
+                        self.played_songs.append((song_name, artist_name))
+                        self.notification_label.config(text=f"Canción '{song_name}' agregada a la lista.")
+                        return True
+                    else:
+                        self.notification_label.config(text=f"Canción '{song_name}' no coincide con los géneros permitidos.")
+                        return False
                 else:
                     self.notification_label.config(text=f"Canción '{song_name}' ya está en la lista.")
+                    return False
             else:
                 self.notification_label.config(text="Canción no encontrada.")
+                return False
+        return False
 
     def reconocimiento_facial(self):
         facesEncodings = []
@@ -486,16 +507,12 @@ class FaceRecognitionApp:
             print(f"Agregando {track['name']} por {track['artists'][0]['name']} a la lista")
             try:
                 self.spotify.add_to_queue(track_uri)
-                self.played_songs.append((track['name'], artist_name))
-                self.notification_label.config(text=f"Canción '{track['name']}' agregada a la lista.")
                 return track['name']
             except Exception as e:
                 print(f"Error agregando canción a la lista: {e}")
-                self.notification_label.config(text=f"Error agregando canción '{track['name']}' a la lista.")
                 return None
         else:
             print(f"{track['name']} by {track['artists'][0]['name']} no coincide con ningún género")
-            self.notification_label.config(text=f"{track['name']} no coincide con ningún género.")
             return None
 
 if __name__ == "__main__":
