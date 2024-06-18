@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS resenya(
 CREATE TABLE IF NOT EXISTS imagen_cliente(
     id SERIAL PRIMARY KEY,
     imagen VARCHAR(100),
-    cliente_id INT UNIQUE,
+    cliente_id INT ,
     FOREIGN KEY(cliente_id) REFERENCES Cliente(id_cliente)
 )
             """)
