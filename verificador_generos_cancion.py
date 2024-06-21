@@ -91,7 +91,7 @@ def get_artist_genres(sp, song_name):
 sp_oauth, spotify = create_spotify()
 
 # Nombre de la canción que quieres buscar
-song_name = "que agonía"
+song_name = "me va extrañar yiyo sarante"
 
 # Obtener el nombre completo de la primera canción encontrada
 full_song_name = get_first_song_name(spotify, song_name)

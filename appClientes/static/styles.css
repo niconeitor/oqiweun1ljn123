@@ -1,0 +1,10 @@
+* {
+    font-family: Poppins, sans-serif;
+    font-weight: 400;
+}
+
+.text-justify {
+    text-align: justify;
+    text-justify: inter-word;
+    /* Esta propiedad mejora la justificación para espaciar correctamente las palabras. */
+}

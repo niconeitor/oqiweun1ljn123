@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Perfil del cliente
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 mt-5">
+    <ul class="list-group list-group-flush">
+      {% if face_url %}
+      <div class="d-flex justify-content-center">
+        <img src="{{ face_url }}" alt="Imagen de {{ cliente.nombre }}" class="img-fluid rounded-circle"
+          style="width:150px;height:150px;" />
+      </div>
+      {% else %}
+      <p class="text-center">No hay imagen del rostro disponible.</p>
+      {% endif %}
+
+      <li class="list-group-item">
+        <p class="fs-5">
+          <b>Nombre(s):</b> {{ cliente.nombre }}
+        </p>
+      </li>
+      <li class="list-group-item">
+        <p class="fs-5">
+          <b>Apellido(s):</b> {{ cliente.apellido }}
+        </p>
+      </li>
+      <li class="list-group-item">
+        <p class="fs-5">
+          <b>Correo:</b> {{ cliente.login }}
+        </p>
+      </li>
+      <li class="list-group-item">
+        <p class="fs-5">
+          <b>Fecha de nacimiento:</b> {{ cliente.fecha_nac }}
+        </p>
+      </li>
+      <li class="list-group-item">
+        <p class="fs-5">
+          <b>Genero:</b> {{ cliente.genero }}
+        </p>
+      </li>
+    </ul>
+    {% if messages %}
+    {% for message in messages %}
+    {% if message.tags %}
+    <div class="alert {% if 'error' in message.tags %}
+                
+        alert-danger
+
+              {% elif 'success' in message.tags %}
+                
+        alert-success
+
+              {% else %}
+                
+        alert-info
+
+              {% endif %}">{{ message }}</div>
+    {% else %}
+    <div class="alert alert-info">{{ message }}</div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <a href="{% url 'agregar_cancion' %}" class="btn btn-primary">Agregar Canción</a>
+
+    <a href="{% url 'subir_imagen' %}" class="btn btn-primary">Subir/Modificar imagen</a>
+
+
+    <form method="post" action="{% url 'eliminar_rostro' %}">
+      {% csrf_token %}
+      <br />
+
+      <button class="btn btn-danger" type="submit">Eliminar mi imagen del rostro</button>
+    </form>
+
+
+    <div class="table-responsive">
+      <table class="table mt-3">
+        <thead>
+          <tr>
+            <th>
+              <b>Nombre de la Canción</b>
+            </th>
+            <th>
+              <b>Acciones</b>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lista in canciones %}
+          <tr>
+            <td>{{ lista.cancion.nombre }}</td>
+            <td>
+              <form action="{% url 'eliminar_cancion' lista.id %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2">No tienes canciones agregadas.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Modulo Subir Imagen{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 mt-5">
+    {% if messages %}
+    {% for message in messages %}
+    {% if message.tags %}
+    <div class="alert {% if 'error' in message.tags %}            
+              alert-danger
+              {% elif 'success' in message.tags %}            
+              alert-success
+              {% else %}         
+              alert-info
+              {% endif %}">{{ message }}</div>
+    {% else %}
+    <div class="alert alert-info">{{ message }}</div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <h2>Subir Imagen</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-success" type="submit">Subir Imagen</button>
+      <a href="{% url 'home' %}" class="btn btn-danger">Volver</a>
+
+    </form>
+    {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

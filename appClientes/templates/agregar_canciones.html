@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Cancion{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h1 class="card-title text-center mb-5">Modulo Agregar Canción</h1>
+
+        {% if messages %}
+        {% for message in messages %}
+        {% if message.tags %}
+        <div class="alert {% if 'error' in message.tags %}
+                    alert-danger
+                  {% elif 'success' in message.tags %}
+                    alert-success
+                  {% else %}
+                    alert-info
+                  {% endif %}">{{ message }}</div>
+        {% else %}
+        <div class="alert alert-info">{{ message }}</div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+
+        <form method="post" action="">
+          {% csrf_token %}
+          {{ buscar_form.as_p }}
+          <button type="submit" name="buscar" class="btn btn-primary">Buscar Canción</button>
+          <a href="{% url 'home' %}" class="btn btn-danger">Volver</a>
+
+        </form>
+
+
+
+        <!-- Mostrar las sugerencias de búsqueda -->
+        {% if sugerencias %}
+        <h3 class="mt-4">Sugerencias de Spotify</h3>
+        <div class="list-group">
+          {% for sugerencia in sugerencias %}
+          <div class="list-group-item">
+            <div class="row">
+              <div class="col-md-3">
+                <img src="{{ sugerencia.image }}" alt="{{ sugerencia.name }}" class="img-fluid rounded">
+
+              </div>
+              <div class="col-md-9">
+                <div>
+                  <p><strong>Nombre de la canción:</strong> {{ sugerencia.name }}</p>
+                  <p><strong>Artista:</strong> {{ sugerencia.artist }}</p>
+                  <p><strong>Álbum:</strong> {{ sugerencia.album }}</p>
+                  <p><strong>Género:</strong> {{ sugerencia.genre }}</p>
+                  <form method="post" action="" class="mt-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="nombre" value="{{ sugerencia.name }}">
+                    <input type="hidden" name="artista" value="{{ sugerencia.artist }}">
+                    <button type="submit" name="agregar" class="btn btn-success">Agregar</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+
+      </div>
+    </div>
+    <br>
+  </div>
+</div>
+
+{% endblock%}

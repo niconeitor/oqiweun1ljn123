@@ -25,7 +25,7 @@ class WelcomeDisplay:
         self.current_message = None
         self.stop_event = threading.Event()
 
-        self.root.geometry("1024x768")
+        self.root.geometry("1200x720")
         self.root.configure(bg=self.background_color)
 
         self.canvas = tk.Canvas(self.root, bg=self.background_color, highlightthickness=0)
@@ -58,6 +58,8 @@ class WelcomeDisplay:
         if not self.canvas.winfo_exists():
             return
         self.canvas.coords(self.logo_item, event.width // 2, event.height // 2)
+        if self.current_message:
+            self.display_message_on_screen(self.current_message)
 
     def toggle_fullscreen(self, event=None):
         if not self.root.winfo_exists():
@@ -85,12 +87,12 @@ class WelcomeDisplay:
                 self.display_next_message()
 
     def generate_message(self, name, last_name, gender):
-        if gender == 'masculino':
-            return f"Bienvenido a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
-        elif gender == 'femenino':
-            return f"Bienvenida a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+        if gender == 'Masculino':
+            return f"Bienvenido a nivel 80 {name} {last_name}!\n Un gusto tenerte con nosotros!"
+        elif gender == 'Femenino':
+            return f"Bienvenida a nivel 80 {name} {last_name}!\n Un gusto tenerte con nosotros!"
         else:
-            return f"Bienvenide a nivel 80 {name} {last_name}! Un gusto tenerte con nosotros!"
+            return f"Bienvenide a nivel 80 {name} {last_name}!\n Un gusto tenerte con nosotros!"
 
     def display_next_message(self):
         if self.message_queue:
@@ -102,9 +104,10 @@ class WelcomeDisplay:
     def display_message_on_screen(self, message):
         if not self.canvas.winfo_exists():
             return
+        self.canvas.delete("message")
         self.message_item = self.canvas.create_text(self.root.winfo_width() // 2, self.root.winfo_height() // 2,
                                                     text=message, font=("Helvetica", 24, "bold"), fill="white",
-                                                    anchor=tk.CENTER)
+                                                    anchor=tk.CENTER, tags="message")
 
     def hide_logo(self):
         if not self.canvas.winfo_exists():
@@ -119,15 +122,18 @@ class WelcomeDisplay:
     def clear_message(self):
         if not self.canvas.winfo_exists():
             return
-        self.canvas.delete(self.message_item)
+        self.canvas.delete("message")
         self.current_message = None
         self.show_logo()
         self.display_next_message()
 
+
+
+
 class FaceRecognitionApp:
     def __init__(self, root, imageFacesPath):
         self.root = root
-        self.root.title("Face Recognition App")
+        self.root.title("SalsI-A")
         self.root.geometry("800x600")
         self.imageFacesPath = imageFacesPath
         self.cap = None
@@ -148,28 +154,28 @@ class FaceRecognitionApp:
         else:
             self.cur = None
 
-        self.start_button = tk.Button(root, text="Start Recognition", command=self.start_recognition)
+        self.start_button = tk.Button(root, text="Iniciar Reconocimiento Facial", command=self.start_recognition)
         self.start_button.pack(pady=10)
 
-        self.stop_button = tk.Button(root, text="Stop Recognition", command=self.stop_recognition)
+        self.stop_button = tk.Button(root, text="Detener Reconocimiento Facial", command=self.stop_recognition)
         self.stop_button.pack(pady=10)
 
         self.print_button = tk.Button(root, text="Generar listas", command=self.generar_listas, state=tk.DISABLED)
         self.print_button.pack(pady=10)
 
-        self.spotify_start_button = tk.Button(root, text="Initialize Spotify", command=self.start_spotify)
+        self.spotify_start_button = tk.Button(root, text="Inicializar Spotify", command=self.start_spotify)
         self.spotify_start_button.pack(pady=10)
 
-        self.spotify_stop_button = tk.Button(root, text="Stop Spotify", command=self.stop_spotify, state=tk.DISABLED)
+        self.spotify_stop_button = tk.Button(root, text="Detener Spotify", command=self.stop_spotify, state=tk.DISABLED)
         self.spotify_stop_button.pack(pady=10)
 
         self.welcome_button = tk.Button(root, text="Mensajes de bienvenida", command=self.start_welcome_display)
         self.welcome_button.pack(pady=10)
 
-        self.exit_button = tk.Button(root, text="Exit", command=self.exit_app)
+        self.exit_button = tk.Button(root, text="Salir", command=self.exit_app)
         self.exit_button.pack(pady=10)
 
-        self.recognized_label = tk.Label(root, text="Recognized Client: None")
+        self.recognized_label = tk.Label(root, text="Cliente Reconocido: Nadie")
         self.recognized_label.pack(pady=10)
 
         self.notification_label = tk.Label(root, text="", fg="red")
@@ -179,7 +185,7 @@ class FaceRecognitionApp:
         try:
             conn = psycopg2.connect(
                 host="localhost",
-                dbname="salsia",
+                dbname="salsiaf",
                 user="postgres",
                 password="nicolas_asdf1",
                 port="5432"
@@ -259,7 +265,7 @@ class FaceRecognitionApp:
         cliente = self.buscar_cliente_por_id(client_id)
         if cliente:
             nombre_completo = f"{cliente[0][0]} {cliente[0][1]}"
-            self.recognized_label.config(text=f"Recognized Client: {nombre_completo}")
+            self.recognized_label.config(text=f"Cliente Reconocido: {nombre_completo}")
             current_time = datetime.now().strftime("%d-%m-%Y-%H:%M")
             if client_id not in self.recognized_clients:
                 self.recognized_clients[client_id] = (cliente[0][0], cliente[0][1], current_time)
@@ -269,16 +275,16 @@ class FaceRecognitionApp:
             if hasattr(self, 'welcome_display'):
                 self.root.after(0, self.welcome_display.show_welcome_message, cliente[0][0], cliente[0][1], cliente[0][2])
         else:
-            self.recognized_label.config(text="Recognized Client: Desconocido")
+            self.recognized_label.config(text="Cliente Reconocido: Desconocido")
 
     def buscar_cliente_por_id(self, id_cliente):
         if self.cur:
             try:
                 self.cur.execute("""
-                    SELECT Cliente.nombre, Cliente.apellidos, Cliente.genero, Cancion.nombre 
+                    SELECT Cliente.nombre, Cliente.apellido, Cliente.genero, Cancion.nombre 
                     FROM Cliente 
-                    LEFT JOIN Lista_cancion ON Cliente.id_cliente = Lista_cancion.id_cliente 
-                    LEFT JOIN Cancion ON Lista_cancion.id_cancion = Cancion.id_cancion 
+                    LEFT JOIN lista_cancion ON Cliente.id_cliente = lista_cancion.cliente_id 
+                    LEFT JOIN Cancion ON lista_cancion.cancion_id = Cancion.id_cancion 
                     WHERE Cliente.id_cliente = %s
                 """, (id_cliente,))
                 cliente = self.cur.fetchall()
@@ -502,7 +508,7 @@ class FaceRecognitionApp:
             print(f"Error obteniendo información del artista: {e}")
             return None
 
-        genres_to_match = ['salsa', 'samba', 'tango', 'cumbia chilena', 'latin alternative', 'salsa puertorriquena', 'tropical', 'latin pop']
+        genres_to_match = ['salsa', 'samba', 'tango', 'cumbia chilena', 'latin alternative', 'salsa puertorriquena', 'tropical', 'latin pop','merengue','salsa colombiana', 'salsa venezolana','modern salsa','salsa peruana','boogaloo']
         if any(genre in artist['genres'] for genre in genres_to_match):
             print(f"Agregando {track['name']} por {track['artists'][0]['name']} a la lista")
             try:

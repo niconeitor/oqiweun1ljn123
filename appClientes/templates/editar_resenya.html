@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Modulo Editar Reseña{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h1 class="card-title text-center mb-5">Editar Reseña</h1>
+        {% if messages %}
+        {% for message in messages %}
+        {% if message.tags %}
+        <div class="alert {% if 'error' in message.tags %}
+                    
+                    
+                  alert-danger
+
+
+                  {% elif 'success' in message.tags %}
+                    
+                    
+                  alert-success
+
+
+                  {% else %}
+                    
+                    
+                  alert-info
+
+
+                  {% endif %}">{{ message }}</div>
+        {% else %}
+        <div class="alert alert-info">{{ message }}</div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        <form action="" method="post">
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit" class="btn btn-primary">Editar Reseña</button>
+          <a href="{% url 'resenyas' %}" class="btn btn-danger">Volver</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
